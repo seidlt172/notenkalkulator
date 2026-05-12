@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notenkalkulator – HCI Master</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f6f6f4;
+      color: #1a1a1a;
+      min-height: 100vh;
+      padding: 32px 16px;
+    }
+
+    .wrapper {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 0.875rem;
+      margin-bottom: 28px;
+    }
+
+    /* ── Result card ── */
+    .result-card {
+      background: #1a1a1a;
+      color: #fff;
+      border-radius: 14px;
+      padding: 24px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+
+    .result-card .label {
+      font-size: 0.875rem;
+      color: #aaa;
+      margin-bottom: 4px;
+    }
+
+    .result-card .score {
+      font-size: 2.8rem;
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    .result-card .meta {
+      text-align: right;
+    }
+
+    .progress-wrap {
+      background: #333;
+      border-radius: 100px;
+      height: 8px;
+      overflow: hidden;
+      margin-top: 8px;
+      min-width: 200px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      border-radius: 100px;
+      background: linear-gradient(90deg, #4ade80, #22c55e);
+      transition: width 0.4s ease;
+    }
+
+    /* ── Section ── */
+    .section {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+
+    .section-title {
+      background: #f0f0ed;
+      padding: 10px 18px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #555;
+    }
+
+    /* ── Row ── */
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 100px 80px 56px;
+      align-items: center;
+      gap: 0;
+      border-bottom: 1px solid #f0f0ed;
+      min-height: 48px;
+    }
+
+    .row:last-child { border-bottom: none; }
+
+    .row-label {
+      padding: 10px 18px;
+      font-size: 0.875rem;
+    }
+
+    .row-endnote {
+      padding: 6px 10px;
+      text-align: center;
+      font-size: 0.875rem;
+      color: #888;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .row-weight {
+      padding: 6px 10px;
+      text-align: center;
+      font-size: 0.75rem;
+      color: #999;
+    }
+
+    /* ── Number Input ── */
+    .input-wrap {
+      padding: 6px 10px;
+      display: flex;
+      justify-content: center;
+    }
+
+    input[type="number"] {
+      width: 64px;
+      padding: 6px 8px;
+      border: 1.5px solid #e4e4e1;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      text-align: center;
+      outline: none;
+      font-variant-numeric: tabular-nums;
+      transition: border-color .15s, background .15s;
+      -moz-appearance: textfield;
+      background: #fff;
+    }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    input[type="number"]:focus { border-color: #1a1a1a; }
+    input[type="number"].valid   { border-color: #22c55e; background: #f0fdf4; }
+    input[type="number"].invalid { border-color: #ef4444; background: #fef2f2; }
+
+    /* ── Checkbox (Seminar) ── */
+    .checkbox-wrap {
+      padding: 6px 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: #555;
+      user-select: none;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border: 1.5px solid #e4e4e1;
+      border-radius: 5px;
+      background: #fff;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .checkbox-label input[type="checkbox"]:checked {
+      background: #22c55e;
+      border-color: #22c55e;
+    }
+
+    .checkbox-label input[type="checkbox"]:checked::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 1px;
+      width: 6px;
+      height: 10px;
+      border: 2px solid #fff;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg);
+    }
+
+    /* ── Column headers ── */
+    .col-headers {
+      display: grid;
+      grid-template-columns: 1fr 100px 80px 56px;
+      padding: 0;
+      margin-bottom: 4px;
+    }
+
+    .col-headers span {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #aaa;
+      text-align: center;
+      padding: 0 10px;
+    }
+
+    .col-headers span:first-child { text-align: left; padding-left: 18px; }
+
+    /* ── Info note ── */
+    .info {
+      font-size: 0.75rem;
+      color: #999;
+      margin-top: 12px;
+      padding-left: 4px;
+    }
+
+    @media (max-width: 520px) {
+      .row { grid-template-columns: 1fr 76px 72px 48px; }
+      .col-headers { grid-template-columns: 1fr 76px 72px 48px; }
+      .result-card .score { font-size: 2.2rem; }
+      .progress-wrap { min-width: 120px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <h1>Notenkalkulator</h1>
+  <p class="subtitle">HCI Master · Gesamtnote nach Gewichtung</p>
+
+  <!-- Result -->
+  <div class="result-card">
+    <div>
+      <div class="label">Aktuelle Gesamtnote</div>
+      <div class="score" id="totalScore">–</div>
+    </div>
+    <div class="meta">
+      <div class="label">Eingetragene Gewichtung</div>
+      <div id="totalWeight" style="font-size:1.1rem;font-weight:600;">0 / 100</div>
+      <div class="progress-wrap" style="min-width:180px;">
+        <div class="progress-bar" id="progressBar" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Column headers -->
+  <div class="col-headers">
+    <span>Fach</span>
+    <span>Note</span>
+    <span>Endnote</span>
+    <span>Gew.</span>
+  </div>
+
+  <!-- ── Hauptprüfung ── -->
+  <div class="section">
+    <div class="section-title">Fächer der Hauptprüfung</div>
+
+    <!-- Research Methods -->
+    <div class="row">
+      <div class="row-label">Research Methods in HCI</div>
+      <div class="input-wrap">
+        <input type="number" min="1" max="5" step="0.1"
+               data-id="rmhci" data-weight="6" oninput="onInput(this)" />
+      </div>
+      <div class="row-endnote" id="end-rmhci">–</div>
+      <div class="row-weight">6,0</div>
+    </div>
+
+    <!-- Interaction Design (single) -->
+    <div class="row">
+      <div class="row-label">Interaction Design</div>
+      <div class="input-wrap">
+        <input type="number" min="1" max="5" step="0.1"
+               data-id="id" data-weight="7" oninput="onInput(this)" />
+      </div>
+      <div class="row-endnote" id="end-id">–</div>
+      <div class="row-weight">7,0</div>
+    </div>
+
+    <!-- Multimodal -->
+    <div class="row">
+      <div class="row-label">Multimodal, Interactive Systems</div>
+      <div class="input-wrap">
+        <input type="number" min="1" max="5" step="0.1"
+               data-id="mis" data-weight="7" oninput="onInput(this)" />
+      </div>
+      <div class="row-endnote" id="end-mis">–</div>
+      <div class="row-weight">7,0</div>
+    </div>
+
+    <!-- Project NUI -->
+    <div class="row">
+      <div class="row-label">Project Natural User Interfaces</div>
+      <div class="input-wrap">
+        <input type="number" min="1" max="5" step="0.1"
+               data-id="pnui" data-weight="6" oninput="onInput(this)" />
+      </div>
+      <div class="row-endnote" id="end-pnui">–</div>
+      <div class="row-weight">6,0</div>
+    </div>
+
+    <!-- Agile -->
+    <div class="row">
+      <div class="row-label">Agile Project Management</div>
+      <div class="input-wrap">
+        <input type="number" min="1" max="5" step="0.1"
+               data-id="apm" data-weight="4" oninput="onInput(this)" />
+      </div>
+      <div class="row-endnote" id="end-apm">–</div>
+      <div class="row-weight">4,0</div>
+    </div>
+
+    <!-- Mobile UX -->
+    <div class="row">
+      <div class="row-label">Mobile UX Prototyping</div>
+      <div class="input-wrap">
+        <input type="number" min="1" max="5" step="0.1"
+               data-id="mux" data-weight="6" oninput="onInput(this)" />
+      </div>
+      <div class="row-endnote" id="end-mux">–</div>
+      <div class="row-weight">6,0</div>
+    </div>
+
+    <!-- Critical UX -->
+    <div class="row">
+      <div class="row-label">Critical UX Reflections</div>
+      <div class="input-wrap">
+        <input type="number" min="1" max="5" step="0.1"
+               data-id="cux" data-weight="3" oninput="onInput(this)" />
+      </div>
+      <div class="row-endnote" id="end-cux">–</div>
+      <div class="row-weight">3,0</div>
+    </div>
+
+    <!-- AVR (single) -->
+    <div class="row">
+      <div class="row-label">Augmented and Virtual Reality Applications</div>
+      <div class="input-wrap">
+        <input type="number" min="1" max="5" step="0.1"
+               data-id="avr" data-weight="7" oninput="onInput(this)" />
+      </div>
+      <div class="row-endnote" id="end-avr">–</div>
+      <div class="row-weight">7,0</div>
+    </div>
+
+    <!-- Design Strategy -->
+    <div class="row">
+      <div class="row-label">Design Strategy and Management</div>
+      <div class="input-wrap">
+        <input type="number" min="1" max="5" step="0.1"
+               data-id="dsm" data-weight="6" oninput="onInput(this)" />
+      </div>
+      <div class="row-endnote" id="end-dsm">–</div>
+      <div class="row-weight">6,0</div>
+    </div>
+
+    <!-- Project -->
+    <div class="row">
+      <div class="row-label">Project</div>
+      <div class="input-wrap">
+        <input type="number" min="1" max="5" step="0.1"
+               data-id="proj" data-weight="6" oninput="onInput(this)" />
+      </div>
+      <div class="row-endnote" id="end-proj">–</div>
+      <div class="row-weight">6,0</div>
+    </div>
+
+    <!-- Master Thesis -->
+    <div class="row">
+      <div class="row-label" style="font-weight:600;">Master Thesis</div>
+      <div class="input-wrap">
+        <input type="number" min="1" max="5" step="0.1"
+               data-id="thesis" data-weight="30" oninput="onInput(this)" />
+      </div>
+      <div class="row-endnote" id="end-thesis">–</div>
+      <div class="row-weight">30,0</div>
+    </div>
+
+    <!-- Master Thesis Seminar (checkbox) -->
+    <div class="row">
+      <div class="row-label">Master Thesis Seminar</div>
+      <div class="checkbox-wrap">
+        <label class="checkbox-label">
+          <input type="checkbox" id="seminar-check" onchange="onSeminar(this)" />
+          Bestanden
+        </label>
+      </div>
+      <div class="row-endnote" id="end-seminar">–</div>
+      <div class="row-weight">–</div>
+    </div>
+  </div>
+
+  <!-- ── Electives ── -->
+  <div class="section">
+    <div class="section-title">Electives (je Gewichtung 6,0)</div>
+
+    <div class="row">
+      <div class="row-label">Elective 1</div>
+      <div class="input-wrap">
+        <input type="number" min="1" max="5" step="0.1"
+               data-id="el1" data-weight="6" oninput="onInput(this)" />
+      </div>
+      <div class="row-endnote" id="end-el1">–</div>
+      <div class="row-weight">6,0</div>
+    </div>
+
+    <div class="row">
+      <div class="row-label">Elective 2</div>
+      <div class="input-wrap">
+        <input type="number" min="1" max="5" step="0.1"
+               data-id="el2" data-weight="6" oninput="onInput(this)" />
+      </div>
+      <div class="row-endnote" id="end-el2">–</div>
+      <div class="row-weight">6,0</div>
+    </div>
+  </div>
+
+  <p class="info">
+    Gesamtgewichtung: 100 · Noten im deutschen System (1,0 – 5,0) · Noten werden automatisch im Browser gespeichert
+  </p>
+
+</div>
+
+<script>
+  const STORAGE_KEY = 'hci-noten-v1';
+  const singles = {};
+
+  function parseGrade(val) {
+    const n = parseFloat(val);
+    if (isNaN(n) || n < 1 || n > 5) return null;
+    return Math.round(n * 10) / 10;
+  }
+
+  function fmt(n) {
+    return n == null ? '–' : n.toFixed(2).replace('.', ',');
+  }
+
+  function gradeColor(n) {
+    if (n == null) return '';
+    if (n <= 1.5) return '#16a34a';
+    if (n <= 2.5) return '#2563eb';
+    if (n <= 3.5) return '#d97706';
+    if (n < 4.0)  return '#ea580c';
+    return '#dc2626';
+  }
+
+  function onInput(input) {
+    const id     = input.dataset.id;
+    const weight = parseInt(input.dataset.weight, 10);
+    const grade  = parseGrade(input.value);
+
+    input.classList.toggle('valid',   grade !== null && input.value !== '');
+    input.classList.toggle('invalid', grade === null && input.value !== '');
+
+    const endEl = document.getElementById('end-' + id);
+    if (endEl) {
+      endEl.textContent = input.value === '' ? '–' : fmt(grade);
+      endEl.style.color = gradeColor(grade);
+    }
+
+    if (weight > 0) {
+      if (grade !== null) {
+        singles[id] = { grade, weight };
+      } else {
+        delete singles[id];
+      }
+    }
+
+    save();
+    recalc();
+  }
+
+  function onSeminar(checkbox) {
+    const endEl = document.getElementById('end-seminar');
+    if (checkbox.checked) {
+      endEl.textContent = 'Bestanden';
+      endEl.style.color = '#16a34a';
+    } else {
+      endEl.textContent = '–';
+      endEl.style.color = '';
+    }
+    save();
+  }
+
+  function recalc() {
+    let weightedSum = 0;
+    let totalW = 0;
+
+    for (const { grade, weight } of Object.values(singles)) {
+      weightedSum += grade * weight;
+      totalW += weight;
+    }
+
+    const scoreEl  = document.getElementById('totalScore');
+    const weightEl = document.getElementById('totalWeight');
+    const bar      = document.getElementById('progressBar');
+
+    if (totalW === 0) {
+      scoreEl.textContent = '–';
+      scoreEl.style.color = '';
+    } else {
+      const avg = weightedSum / totalW;
+      scoreEl.textContent = avg.toFixed(2).replace('.', ',');
+      scoreEl.style.color = gradeColor(avg);
+    }
+
+    weightEl.textContent = totalW + ' / 100';
+    bar.style.width = Math.min(totalW, 100) + '%';
+
+    if (totalW < 50) {
+      bar.style.background = 'linear-gradient(90deg, #facc15, #eab308)';
+    } else if (totalW < 100) {
+      bar.style.background = 'linear-gradient(90deg, #60a5fa, #3b82f6)';
+    } else {
+      bar.style.background = 'linear-gradient(90deg, #4ade80, #22c55e)';
+    }
+  }
+
+  /* ── localStorage ── */
+  function save() {
+    const data = {};
+    document.querySelectorAll('input[data-id]').forEach(inp => {
+      if (inp.value !== '') data[inp.dataset.id] = inp.value;
+    });
+    const seminar = document.getElementById('seminar-check');
+    if (seminar) data['seminar-check'] = seminar.checked;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  function load() {
+    let data;
+    try { data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+    catch { data = {}; }
+
+    document.querySelectorAll('input[data-id]').forEach(inp => {
+      const saved = data[inp.dataset.id];
+      if (saved !== undefined) {
+        inp.value = saved;
+        onInput(inp);
+      }
+    });
+
+    const seminar = document.getElementById('seminar-check');
+    if (seminar && data['seminar-check'] === true) {
+      seminar.checked = true;
+      onSeminar(seminar);
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>
